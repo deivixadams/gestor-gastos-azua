@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Gastos</title>
+    <!-- Incluye Tailwind CSS para un estilo moderno y rápido -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center py-10 px-4">
+
+    <!-- Contenedor principal de la aplicación -->
+    <div class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-2xl border border-gray-200">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-center text-gray-800 mb-6">Gestor de Gastos</h1>
+        
+        <!-- Formulario para agregar nuevos gastos -->
+        <form id="expense-form" class="bg-gray-50 p-6 rounded-lg shadow-inner mb-6">
+            <div class="grid md:grid-cols-2 gap-4 mb-4">
+                <!-- Campo para la descripción del gasto -->
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700">Descripción</label>
+                    <input type="text" id="description" placeholder="Ej: Café, Comida, Transporte" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <!-- Campo para el monto del gasto -->
+                <div>
+                    <label for="amount" class="block text-sm font-medium text-gray-700">Monto (€)</label>
+                    <input type="number" id="amount" placeholder="10.50" step="0.01" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+            </div>
+            <!-- Botón para agregar el gasto -->
+            <button type="submit"
+                    class="w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-indigo-700 transition-colors shadow-lg">
+                Agregar Gasto
+            </button>
+        </form>
+
+        <!-- Contenedor para la lista de gastos y el total -->
+        <div class="bg-white rounded-lg border border-gray-200">
+            <!-- Título de la lista de gastos -->
+            <h2 class="text-2xl font-bold text-gray-800 p-4 border-b">Mis Gastos</h2>
+            
+            <!-- Lista de gastos -->
+            <ul id="expense-list" class="divide-y divide-gray-200">
+                <!-- Los elementos de la lista se insertarán aquí dinámicamente -->
+            </ul>
+
+            <!-- Sección del total -->
+            <div class="p-4 bg-gray-50 border-t rounded-b-lg flex justify-between items-center font-bold text-lg text-gray-800">
+                <span>Total de Gastos:</span>
+                <span id="total-amount">€0.00</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Obtiene las referencias a los elementos del DOM
+        const expenseForm = document.getElementById('expense-form');
+        const descriptionInput = document.getElementById('description');
+        const amountInput = document.getElementById('amount');
+        const expenseList = document.getElementById('expense-list');
+        const totalAmountSpan = document.getElementById('total-amount');
+
+        // Define una clave para localStorage
+        const STORAGE_KEY = 'expenses';
+
+        // --- Funciones para manejar los datos ---
+
+        /**
+         * Carga los gastos desde localStorage.
+         * @returns {Array} Un array de objetos de gastos o un array vacío si no hay datos.
+         */
+        const loadExpenses = () => {
+            try {
+                const storedExpenses = localStorage.getItem(STORAGE_KEY);
+                // Si hay datos, los parsea de JSON y los devuelve
+                return storedExpenses ? JSON.parse(storedExpenses) : [];
+            } catch (e) {
+                console.error("Error al cargar los gastos de localStorage", e);
+                return [];
+            }
+        };
+
+        /**
+         * Guarda los gastos en localStorage.
+         * @param {Array} expenses El array de gastos a guardar.
+         */
+        const saveExpenses = (expenses) => {
+            try {
+                // Convierte el array de gastos a una cadena JSON y lo guarda
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
+            } catch (e) {
+                console.error("Error al guardar los gastos en localStorage", e);
+            }
+        };
+
+        // --- Funciones para actualizar la interfaz de usuario ---
+
+        /**
+         * Calcula y muestra la suma total de todos los gastos.
+         */
+        const calculateTotal = () => {
+            const expenses = loadExpenses();
+            // Utiliza reduce para sumar todos los montos
+            const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+            // Muestra el total formateado
+            totalAmountSpan.textContent = `€${total.toFixed(2)}`;
+        };
+
+        /**
+         * Renderiza la lista completa de gastos en el DOM.
+         */
+        const renderExpenses = () => {
+            const expenses = loadExpenses();
+            // Limpia la lista actual
+            expenseList.innerHTML = '';
+            
+            // Crea un elemento de lista para cada gasto
+            expenses.forEach((expense, index) => {
+                const li = document.createElement('li');
+                li.className = 'p-4 flex justify-between items-center';
+                
+                li.innerHTML = `
+                    <div class="flex-1 min-w-0">
+                        <span class="text-gray-800 text-lg font-medium truncate">${expense.description}</span>
+                    </div>
+                    <div class="ml-4 flex-shrink-0 flex items-center">
+                        <span class="text-red-600 text-lg font-bold mr-4 whitespace-nowrap">
+                            -€${expense.amount.toFixed(2)}
+                        </span>
+                        <!-- Botón para eliminar el gasto -->
+                        <button class="delete-btn text-red-500 hover:text-red-700 transition-colors" data-index="${index}">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm6 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                
+                expenseList.appendChild(li);
+            });
+            
+            // Actualiza el total después de renderizar la lista
+            calculateTotal();
+        };
+
+        // --- Manejo de eventos ---
+
+        /**
+         * Maneja el envío del formulario para agregar un nuevo gasto.
+         * @param {Event} e El evento de envío.
+         */
+        const handleFormSubmit = (e) => {
+            e.preventDefault(); // Evita que el formulario recargue la página
+
+            const description = descriptionInput.value.trim();
+            const amount = parseFloat(amountInput.value);
+
+            // Validar que los campos no estén vacíos
+            if (description === '' || isNaN(amount) || amount <= 0) {
+                // Podríamos mostrar un mensaje de error aquí
+                console.error('Por favor, ingrese una descripción y un monto válido.');
+                return;
+            }
+            
+            // Cargar gastos existentes
+            const expenses = loadExpenses();
+
+            // Crear un nuevo objeto de gasto
+            const newExpense = {
+                description: description,
+                amount: amount,
+            };
+
+            // Agregar el nuevo gasto al array
+            expenses.push(newExpense);
+            
+            // Guardar el array actualizado en localStorage
+            saveExpenses(expenses);
+            
+            // Renderizar la lista de nuevo
+            renderExpenses();
+            
+            // Limpiar los campos del formulario
+            expenseForm.reset();
+        };
+
+        /**
+         * Maneja los clics en la lista para eliminar gastos.
+         * @param {Event} e El evento de clic.
+         */
+        const handleListClick = (e) => {
+            // Comprueba si el clic fue en un botón de eliminar
+            if (e.target.closest('.delete-btn')) {
+                const btn = e.target.closest('.delete-btn');
+                const index = btn.dataset.index;
+                
+                const expenses = loadExpenses();
+                // Elimina el gasto del array usando su índice
+                expenses.splice(index, 1);
+                
+                // Guarda el array actualizado y renderiza la lista
+                saveExpenses(expenses);
+                renderExpenses();
+            }
+        };
+
+        // --- Inicialización ---
+
+        // Asocia los manejadores de eventos
+        expenseForm.addEventListener('submit', handleFormSubmit);
+        expenseList.addEventListener('click', handleListClick);
+
+        // Carga y renderiza los gastos al cargar la página
+        window.addEventListener('load', () => {
+            renderExpenses();
+        });
+    </script>
+</body>
+</html>
